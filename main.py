@@ -1,5 +1,6 @@
 # JPEG compression
-from DCT import DCT
+from .src.dct import dct2d, idct2d
+from .src.rle import rle, irle
 import pygame as pg
 pg.init()
 
