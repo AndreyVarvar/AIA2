@@ -1,6 +1,7 @@
 # JPEG compression
-from .src.dct import dct2d, idct2d
-from .src.rle import rle, irle
+from src.dct import dct2d, idct2d
+from src.rle import rle, irle
+import numpy as np
 import pygame as pg
 pg.init()
 
@@ -54,7 +55,7 @@ def jpeg_dct(matrix: list[list[int]]):
             for i in range(0, w if (x + 8 < len(matrix[0])) else x_rem):
                 for j in range(0, h if (y + 8 < len(matrix)) else y_rem):
                     m[j][i] = matrix[y+j][x+i]
-            m = DCT(m, h, w)
+            m = dct2d(np.array(m))
             for i in range(0, w if (x + 8 < len(matrix[0])) else x_rem):
                 for j in range(0, h if (y + 8 < len(matrix)) else y_rem):
                     matrix[y+j][x+i] = m[i][j]
