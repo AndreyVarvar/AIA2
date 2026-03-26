@@ -1,0 +1,61 @@
+import heapq
+from collections import Counter
+
+
+class HuffmanNode:
+    def __init__(self, symbol=None, freq=None):
+        self.symbol = symbol
+        self.freq = freq
+        self.left = None
+        self.right = None
+
+    def __lt__(self, other):
+        if self.freq < other.freq:
+            return True
+        else:
+            return False
+
+
+def build_huffman_tree(symbols):
+    freq = Counter(symbols)
+    heap = [HuffmanNode(sym, f) for sym, f in freq.items()]
+    heapq.heapify(heap)
+
+    while len(heap) > 1:
+        left = heapq.heappop(heap)
+        right = heapq.heappop(heap)
+        parent = HuffmanNode(freq=left.freq + right.freq)
+        parent.left = left
+        parent.right = right
+        heapq.heappush(heap, parent)
+
+    if heap:
+        return heap[0]
+    else:
+        return None
+
+def generate_huffman_codes(node, code="", table=None):
+    if table is None:
+        table = {}
+    if node:
+        if node.symbol is not None:
+            table[node.symbol] = code
+        generate_huffman_codes(node.left, code + "0", table)
+        generate_huffman_codes(node.right, code + "1", table)
+    return table
+
+def huffman_encode(symbols):
+    tree = build_huffman_tree(symbols)
+    codes = generate_huffman_codes(tree)
+    encoded = ''.join(codes[s] for s in symbols)
+    return encoded, codes, tree
+
+def huffman_decode(encoded, tree):
+    decoded = []
+    node = tree
+    for bit in encoded:
+        node = node.left if bit == '0' else node.right
+        if node.symbol is not None:
+            decoded.append(node.symbol)
+            node = tree
+    return decoded
