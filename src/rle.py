@@ -18,7 +18,7 @@ def rle(data: str) -> str:
     return " ".join(runs)
 
 
-def irle(string: str, len_first: bool) -> str:
+def irle(data: str) -> str:
     """Decode a run-length encoded string back to space-separated floats."""
     if not data.strip():
         return ""
