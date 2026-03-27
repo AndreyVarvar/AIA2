@@ -48,7 +48,7 @@ def huffman(symbols):
     tree = _build_huffman_tree(symbols)
     codes = _generate_huffman_codes(tree)
     encoded = ''.join(codes[s] for s in symbols)
-    return encoded
+    return encoded, tree
 
 def ihuffman(encoded, tree):
     decoded = []
