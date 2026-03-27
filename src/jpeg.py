@@ -1,9 +1,11 @@
+
 # JPEG compression
 from src.dct import dct2d, idct2d
-from src.rle import rle, rle
+from src.rle import rle, irle
 from src.huffman import *
 import numpy as np
 import pygame as pg
+import json
 pg.init()
 
 
@@ -36,7 +38,8 @@ def zigzag_scan(matrix: np.array):
 
 
 
-def jpeg(image: pg.Surface):
+def jpeg(image_path):
+    image = pg.image.load(image_path)
     # step 1: convert RGB into YCbCr
 
     coeff = [
@@ -105,11 +108,28 @@ def jpeg(image: pg.Surface):
                 # step 4: MAXIMUM COMPRESSION
                 data_strip = zigzag_scan(block_dct)
                 str_data_strip = ' '.join(map(str, data_strip))
+                print(str_data_strip)
                 rle_encoded = rle(str_data_strip)
                 huffman_encoded = huffman(rle_encoded)
                 results.append(f"{huffman_encoded[0]} tree:{huffman_encoded[1]}")
-    return results
+    result = '\n'.join(results)
+    image_name = image_path.split('/')[-1].split('.')[0]
+    with open(f"./results/{image_name}.jpeg", "w") as file:
+        file.write(result)
 
-
+def ijpeg(jpeg_path):
+    # step 1: read the file
+    with open(jpeg_path, "r") as file:
+        data = file.read()
+    # step 2: decompress the huffman part
+    channels = data.split("\n")
+    for channel in channels:
+        encoded, tree_str = channel.split(" tree:")
+        #print("-----------------------------------------")
+        tree = json.loads(tree_str.replace("'", '"'))  # replace single quotes with double quotes, because json picky
+        rle_encoded = ihuffman(encoded, tree)
+        #print(rle_encoded)
+        str_data_strip = irle(rle_encoded, True)
+        data_strip = map(float, str_data_strip.split(" "))
 
 

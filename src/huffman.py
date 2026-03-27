@@ -48,14 +48,18 @@ def huffman(symbols):
     tree = _build_huffman_tree(symbols)
     codes = _generate_huffman_codes(tree)
     encoded = ''.join(codes[s] for s in symbols)
-    return encoded, tree
+    return encoded, codes
 
-def ihuffman(encoded, tree):
-    decoded = []
-    node = tree
+def ihuffman(encoded, codes):
+    decoded = ""
+    inverted_codes = {v: k for k, v in codes.items()}
+
+    current = ''
+
     for bit in encoded:
-        node = node.left if bit == '0' else node.right
-        if node.symbol is not None:
-            decoded.append(node.symbol)
-            node = tree
+        current += bit
+        if current in inverted_codes:
+            decoded += inverted_codes[current]
+            current = ""
+
     return decoded

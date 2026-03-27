@@ -1,10 +1,9 @@
 import pygame as pg
-from src.jpeg import jpeg_compress_2
-import src.jpeg
+from src.jpeg import jpeg, ijpeg
 
 display = pg.display.set_mode((800, 800))
-image = pg.image.load("tests/to_compress.png")
-jpeg_compress_2(image)
+jpeg(image_path="tests/to_compress.png")
+ijpeg("results/to_compress.jpeg")
 
 running = True
 while running:
