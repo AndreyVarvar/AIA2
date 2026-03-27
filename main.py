@@ -1,6 +1,7 @@
 # JPEG compression
-from src.dct import dct2d, idct2d
-from src.rle import rle, irle
+from src.dct import *
+from src.rle import *
+from src.huffman import *
 import numpy as np
 import pygame as pg
 pg.init()

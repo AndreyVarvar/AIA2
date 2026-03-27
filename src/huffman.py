@@ -16,7 +16,7 @@ class HuffmanNode:
             return False
 
 
-def build_huffman_tree(symbols):
+def _build_huffman_tree(symbols):
     freq = Counter(symbols)
     heap = [HuffmanNode(sym, f) for sym, f in freq.items()]
     heapq.heapify(heap)
@@ -34,23 +34,23 @@ def build_huffman_tree(symbols):
     else:
         return None
 
-def generate_huffman_codes(node, code="", table=None):
+def _generate_huffman_codes(node, code="", table=None):
     if table is None:
         table = {}
     if node:
         if node.symbol is not None:
             table[node.symbol] = code
-        generate_huffman_codes(node.left, code + "0", table)
-        generate_huffman_codes(node.right, code + "1", table)
+        _generate_huffman_codes(node.left, code + "0", table)
+        _generate_huffman_codes(node.right, code + "1", table)
     return table
 
-def huffman_encode(symbols):
-    tree = build_huffman_tree(symbols)
-    codes = generate_huffman_codes(tree)
+def huffman(symbols):
+    tree = _build_huffman_tree(symbols)
+    codes = _generate_huffman_codes(tree)
     encoded = ''.join(codes[s] for s in symbols)
     return encoded, codes, tree
 
-def huffman_decode(encoded, tree):
+def ihuffman(encoded, tree):
     decoded = []
     node = tree
     for bit in encoded:
