@@ -6,6 +6,7 @@ from src.huffman import *
 import numpy as np
 import pygame as pg
 import json
+import pickle
 pg.init()
 
 
@@ -35,7 +36,6 @@ def zigzag_scan(matrix: np.array):
         else:
             result.extend(temp)
     return result
-
 
 
 def jpeg(image_path):
@@ -103,21 +103,28 @@ def jpeg(image_path):
 
                 for x in range(8):
                     for y in range(8):
-                        block_dct[y][x] /= q_matrix[y][x]
+                        block_dct[y][x] = round(block_dct[y][x] / q_matrix[y][x])
 
                 # step 4: MAXIMUM COMPRESSION
                 data_strip = zigzag_scan(block_dct)
                 str_data_strip = ' '.join(map(str, data_strip))
-                print(str_data_strip)
                 rle_encoded = rle(str_data_strip)
-                huffman_encoded = huffman(rle_encoded)
-                results.append(f"{huffman_encoded[0]} tree:{huffman_encoded[1]}")
-    result = '\n'.join(results)
+                huffman_encoded, huffman_codes = huffman(rle_encoded)
+                # make the huffman_encoded part length be divisible by 4
+                results.append([huffman_encoded, huffman_codes])
+
     image_name = image_path.split('/')[-1].split('.')[0]
-    with open(f"./results/{image_name}.jpeg", "w") as file:
-        file.write(result)
+    with open(f"./results/{image_name}.jpeg", "wb") as file:
+        for encoded, codes in results:
+            padding = (8 - len(encoded) % 8) % 8
+    
+            encoded += '0'*padding  # add extra 0's to the end to make the length divisible by 8
+            file.write(bytes([padding]))
+            byte_array = bytearray([int(encoded[i:i+8], 2) for i in range(0, len(encoded), 8)])
+            file.write(byte_array)
 
 def ijpeg(jpeg_path):
+    return
     # step 1: read the file
     with open(jpeg_path, "r") as file:
         data = file.read()
@@ -129,7 +136,7 @@ def ijpeg(jpeg_path):
         tree = json.loads(tree_str.replace("'", '"'))  # replace single quotes with double quotes, because json picky
         rle_encoded = ihuffman(encoded, tree)
         #print(rle_encoded)
-        str_data_strip = irle(rle_encoded, True)
+        str_data_strip = irle(rle_encoded)
         data_strip = map(float, str_data_strip.split(" "))
 
 

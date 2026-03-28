@@ -5,7 +5,7 @@ display = pg.display.set_mode((800, 800))
 jpeg(image_path="tests/to_compress.png")
 ijpeg("results/to_compress.jpeg")
 
-running = True
+running = False
 while running:
     for event in pg.event.get():
         if event.type == pg.QUIT:
