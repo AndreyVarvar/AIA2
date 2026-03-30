@@ -1,13 +1,59 @@
-
 # JPEG compression
-from src.dct import dct2d, idct2d
-from src.rle import rle, irle
-from src.huffman import *
+from dct import dct2d, idct2d
+from rle import rle, irle
+from huffman import *
 import numpy as np
-import pygame as pg
 import json
 import pickle
-pg.init()
+import matplotlib.image as mtimg
+import matplotlib.pyplot as plt
+
+# Quantization table for brightness
+Q_LUMA = np.array(
+    [
+        [16, 11, 10, 16, 24, 40, 51, 61],
+        [12, 12, 14, 19, 26, 58, 60, 55],
+        [14, 13, 16, 24, 40, 57, 69, 56],
+        [14, 17, 22, 29, 51, 87, 80, 62],
+        [18, 22, 37, 56, 68, 109, 103, 77],
+        [24, 35, 55, 64, 81, 104, 113, 92],
+        [49, 64, 78, 87, 103, 121, 120, 101],
+        [72, 92, 95, 98, 112, 100, 103, 99],
+    ],
+    dtype=np.float32,
+)
+
+# Quantization table for color
+Q_CHROMA = np.array(
+    [
+        [17, 18, 24, 47, 99, 99, 99, 99],
+        [18, 21, 26, 66, 99, 99, 99, 99],
+        [24, 26, 56, 99, 99, 99, 99, 99],
+        [47, 66, 99, 99, 99, 99, 99, 99],
+        [99, 99, 99, 99, 99, 99, 99, 99],
+        [99, 99, 99, 99, 99, 99, 99, 99],
+        [99, 99, 99, 99, 99, 99, 99, 99],
+        [99, 99, 99, 99, 99, 99, 99, 99],
+    ],
+    dtype=np.float32,
+)
+
+# Arrays used for zigzag sorting
+ZIGZAG = np.array([
+     0,  1,  5,  6, 14, 15, 27, 28,
+     2,  4,  7, 13, 16, 26, 29, 42,
+     3,  8, 12, 17, 25, 30, 41, 43,
+     9, 11, 18, 24, 31, 40, 44, 53,
+    10, 19, 23, 32, 39, 45, 52, 54,
+    20, 22, 33, 38, 46, 51, 55, 60,
+    21, 34, 37, 47, 50, 56, 59, 61,
+    35, 36, 48, 49, 57, 58, 62, 63,
+], dtype=np.int32)
+
+ZIGZAG_INV = np.argsort(ZIGZAG)
+
+EOB = (0, 0)   # end of block
+ZRL = (15, 0)  # special: 16 consecutive zeros
 
 
 def zigzag_scan(matrix: np.array):
@@ -46,23 +92,21 @@ def jpeg(image_path):
         img = img.astype(np.float32)
 
         R, G, B = img[..., 0], img[..., 1], img[..., 2]
-        Y  =  0.299  * R + 0.587  * G + 0.114  * B - 128
-        Cb = -0.169  * R - 0.331  * G + 0.500  * B
-        Cr =  0.500  * R - 0.419  * G - 0.081  * B
+        Y = 0.299 * R + 0.587 * G + 0.114 * B - 128
+        Cb = -0.169 * R - 0.331 * G + 0.500 * B
+        Cr = 0.500 * R - 0.419 * G - 0.081 * B
 
         return np.stack([Y, Cb, Cr], axis=-1).clip(0, 255).astype(np.uint8)
-    
+
     def subsample(img: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Split YCbCr into channels, downsample Cb and Cr by 2x in both dims."""
-        Y  = img[..., 0]
+        Y = img[..., 0]
         Cb = img[..., 1]
         Cr = img[..., 2]
 
         # Average each 2x2 block into one pixel (box filter)
-        Cb_sub = (Cb[0::2, 0::2] + Cb[1::2, 0::2] +
-                Cb[0::2, 1::2] + Cb[1::2, 1::2]) / 4
-        Cr_sub = (Cr[0::2, 0::2] + Cr[1::2, 0::2] +
-                Cr[0::2, 1::2] + Cr[1::2, 1::2]) / 4
+        Cb_sub = (Cb[0::2, 0::2] + Cb[1::2, 0::2] + Cb[0::2, 1::2] + Cb[1::2, 1::2]) / 4
+        Cr_sub = (Cr[0::2, 0::2] + Cr[1::2, 0::2] + Cr[0::2, 1::2] + Cr[1::2, 1::2]) / 4
 
         return Y, Cb_sub, Cr_sub
 
@@ -76,15 +120,61 @@ def jpeg(image_path):
         blocks = blocks.transpose(0, 2, 1, 3)  # (nH, nW, 8, 8)
 
         return blocks
+
     def pad(channel: np.ndarray) -> np.ndarray:
         """Pad a channel to the nearest multiple of 8 by repeating edge pixels."""
         h, w = channel.shape
         ph = (8 - h % 8) % 8  # extra rows needed
         pw = (8 - w % 8) % 8  # extra cols needed
 
-        return np.pad(channel, ((0, ph), (0, pw)), mode='edge')
+        return np.pad(channel, ((0, ph), (0, pw)), mode="edge")
+    
+    def quantize(blocks: np.ndarray, table: np.ndarray) -> np.ndarray:
+        """Divide DCT coefficients by quantization table and round."""
+        return np.round(blocks / table).astype(np.int32)
+    
+    def zigzag(blocks: np.ndarray) -> np.ndarray:
+        """Reorder each 8x8 block into a 64-element zigzag sequence.
+        Input:  (nH, nW, 8, 8)
+        Output: (nH, nW, 64)
+        """
+        return blocks.reshape(*blocks.shape[:2], 64)[:, :, ZIGZAG]
+    
+    def rle_encode_block(block: np.ndarray) -> list[tuple[int, int]]:
+        """RLE encode 63 AC coefficients of a zigzag block."""
+        symbols = []
+        skip = 0
+        for val in block[1:]:  # skip DC
+            if val == 0:
+                skip += 1
+                if skip == 16:  # ZRL: can only encode runs of 15
+                    symbols.append(ZRL)
+                    skip = 0
+            else:
+                symbols.append((skip, int(val)))
+                skip = 0
+        if skip > 0:
+            symbols.append(EOB)
+        return symbols
+    
+    def encode_channel(blocks: np.ndarray) -> tuple[list, list]:
+        """Delta-encode DCs and RLE-encode ACs for a full channel.
+        blocks shape: (nH, nW, 64)
+        Returns dc_deltas and ac_symbols per block."""
+        nH, nW = blocks.shape[:2]
+        flat = blocks.reshape(-1, 64)
 
-    image = np.array(pg.image.load(image_path))
+        # DC: store difference from previous block's DC
+        dcs = flat[:, 0]
+        dc_deltas = np.diff(dcs, prepend=0).tolist()
+
+        # AC: RLE per block
+        ac_symbols = [rle_encode_block(block) for block in flat]
+
+        return dc_deltas, ac_symbols
+
+
+    image = mtimg.imread(image_path)
     # step 1: convert RGB into YCbCr
     image = rgb_to_ycrcb(image)
     # step 2: Chroma subsampling (reduce resoulution od Cb and Cr)
@@ -93,71 +183,17 @@ def jpeg(image_path):
     blocks = [split_blocks(pad(ch)) for ch in channels]
     # step 4: apply 2D DCT for each block
     dct_blocks = [dct2d(b) for b in blocks]
+    # step 5: quantization
+    quant_blocks = [
+        quantize(dct_blocks[0], Q_LUMA),
+        quantize(dct_blocks[1], Q_CHROMA),
+        quantize(dct_blocks[2], Q_CHROMA)
+    ]
+    zz_blocks = [zigzag(b) for b in quant_blocks]
+    # step 6: RLE encodng
+    encoded = [encode_channel(b) for b in zz_blocks]
+    # step 7: huffman encoding
 
-    # luma_q_matrix = [
-    #     [5,  4,  5,  5,  6,  8,  15, 21],
-    #     [4,  4,  5,  6,  7,  11, 19, 27],
-    #     [4,  5,  5,  7,  11, 16, 23, 27],
-    #     [5,  6,  8,  9,  17, 19, 25, 28],
-    #     [8,  8,  12, 15, 20, 24, 30, 32],
-    #     [12, 17, 17, 25, 31, 30, 35, 29],
-    #     [15, 18, 20, 23, 30, 33, 34, 30],
-    #     [18, 16, 17, 18, 22, 27, 29, 29]
-    # ]
-
-    # color_q_matrix = [
-    #     [6,  6,  8,  14, 29, 29, 29, 29],
-    #     [6,  7,  8,  19, 29, 29, 29, 29],
-    #     [8,  8,  17, 29, 29, 29, 29, 29],
-    #     [14, 19, 29, 29, 29, 29, 29, 29],
-    #     [29, 29, 29, 29, 29, 29, 29, 29],
-    #     [29, 29, 29, 29, 29, 29, 29, 29],
-    #     [29, 29, 29, 29, 29, 29, 29, 29],
-    #     [29, 29, 29, 29, 29, 29, 29, 29]
-    # ]
-    
-        
-
-    # step 2: convert to frequency domain using DCT
-    # first divide the channel information into 8x8 chunks
-    # x_rem = image.width  % 8
-    # y_rem = image.height % 8
-    # for block_x in range(0, image.width, 8):
-    #     for block_y in range(0, image.height, 8):
-    #         # transfer data to the block matrix
-    #         block = np.zeros((8, 8))
-    #         for rel_x in range(0, min(8, image.width-block_x)):
-    #             for rel_y in range(0, min(8, image.height-block_y)):
-    #                 block[rel_y][rel_x] = channel[block_y+rel_y][block_x+rel_x]
-    #         # apply DCT transform to block
-    #         block_dct = dct2d(block)
-            
-    #         # step 3: quantization matrix
-    #         q_matrix = color_q_matrix
-    #         if i == 0:
-    #             q_matrix = luma_q_matrix
-
-    #         for x in range(8):
-    #             for y in range(8):
-    #                 block_dct[y][x] = round(block_dct[y][x] / q_matrix[y][x])
-
-    #         # step 4: MAXIMUM COMPRESSION
-    #         data_strip = zigzag_scan(block_dct)
-    #         str_data_strip = ' '.join(map(str, data_strip))
-    #         rle_encoded = rle(str_data_strip)
-    #         huffman_encoded, huffman_codes = huffman(rle_encoded)
-    #         # make the huffman_encoded part length be divisible by 4
-    #         results.append([huffman_encoded, huffman_codes])
-
-    # image_name = image_path.split('/')[-1].split('.')[0]
-    # with open(f"./results/{image_name}.jpeg", "wb") as file:
-    #     for encoded, codes in results:
-    #         padding = (8 - len(encoded) % 8) % 8
-    
-    #         encoded += '0'*padding  # add extra 0's to the end to make the length divisible by 8
-    #         file.write(bytes([padding]))
-    #         byte_array = bytearray([int(encoded[i:i+8], 2) for i in range(0, len(encoded), 8)])
-    #         file.write(byte_array)
 
 def ijpeg(jpeg_path):
     """Convert compressend JPEG image back to PNG with losses because of nature of JPEG"""
@@ -167,12 +203,12 @@ def ijpeg(jpeg_path):
         img = img.astype(np.float32)
         Y, Cb, Cr = img[..., 0] + 128, img[..., 1], img[..., 2]
 
-        R = Y             + 1.402  * Cr
-        G = Y - 0.344  * Cb - 0.714  * Cr
-        B = Y + 1.772  * Cb
+        R = Y + 1.402 * Cr
+        G = Y - 0.344 * Cb - 0.714 * Cr
+        B = Y + 1.772 * Cb
 
         return np.stack([R, G, B], axis=-1).clip(0, 255).astype(np.uint8)
-    
+
     def upsample(Y: np.ndarray, Cb: np.ndarray, Cr: np.ndarray) -> np.ndarray:
         """Upsample Cb and Cr back to full resolution by repeating pixels."""
         Cb_up = np.repeat(np.repeat(Cb, 2, axis=0), 2, axis=1)
@@ -181,3 +217,44 @@ def ijpeg(jpeg_path):
         # Crop to Y's shape in case of odd dimensions
         h, w = Y.shape
         return np.stack([Y, Cb_up[:h, :w], Cr_up[:h, :w]], axis=-1)
+    
+    def dequantize(blocks: np.ndarray, table: np.ndarray) -> np.ndarray:
+        """Multiply quantized coefficients back by quantization table."""
+        return (blocks * table).astype(np.float32)
+    
+    def izigzag(blocks: np.ndarray) -> np.ndarray:
+        """Restore zigzag sequence back to 8x8 block.
+        Input:  (nH, nW, 64)
+        Output: (nH, nW, 8, 8)
+        """
+        return blocks[:, :, ZIGZAG_INV].reshape(*blocks.shape[:2], 8, 8)
+    
+    def rle_decode_block(symbols: list[tuple[int, int]], dc: int) -> np.ndarray:
+        """Decode RLE symbols back to 64 coefficients including DC."""
+        block = np.zeros(64, dtype=np.int32)
+        block[0] = dc
+        i = 1
+        for skip, val in symbols:
+            if (skip, val) == EOB:
+                break
+            if (skip, val) == ZRL:
+                i += 16
+            else:
+                i += skip
+                block[i] = val
+                i += 1
+        return block
+    
+    def decode_channel(dc_deltas: list, ac_symbols: list, nH: int, nW: int) -> np.ndarray:
+        """Reconstruct (nH, nW, 64) blocks from DC deltas and AC symbols."""
+        dcs = np.cumsum(dc_deltas).astype(np.int32)
+        blocks = np.array([
+            rle_decode_block(ac, dc)
+            for ac, dc in zip(ac_symbols, dcs)
+        ])
+        return blocks.reshape(nH, nW, 64)
+
+
+if __name__ == "__main__":
+    image_path = "AIA2\\tests\\to_compress.png"
+    jpeg(image_path)
