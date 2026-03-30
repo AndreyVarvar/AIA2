@@ -80,7 +80,7 @@ def jpeg(ipath, opath):
         Cb = -0.169 * R - 0.331 * G + 0.500 * B
         Cr = 0.500 * R - 0.419 * G - 0.081 * B
 
-        return np.stack([Y, Cb, Cr], axis=-1).clip(0, 255).astype(np.uint8)
+        return np.stack([Y, Cb, Cr], axis=-1)
 
     def subsample(img: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Split YCbCr into channels, downsample Cb and Cr by 2x in both dims."""
@@ -243,6 +243,8 @@ def jpeg(ipath, opath):
 
     image = mtimg.imread(ipath)
     orig_h, orig_w = image.shape[:2]
+    if image.dtype != np.uint8:
+        image = (image * 255).astype(np.uint8)
     # step 1: convert RGB into YCbCr
     ycbcr = rgb_to_ycrcb(image)
     # step 2: Chroma subsampling (reduce resoulution of Cb and Cr)
@@ -347,11 +349,11 @@ def ijpeg(ipath, opath):
         return blocks.reshape(nH, nW, 64)
 
     def ihuffman_dc(bits: str, codes: dict) -> list:
-        symbols = ihuffman(bits, codes)
+        symbols = ihuffman_jpeg(bits, codes)
         return [_str_to_sym(s, is_ac=False) for s in symbols]
     
     def ihuffman_ac(bits: str, codes: dict, n_blocks: int) -> list[list]:
-        flat = ihuffman(bits, codes)
+        flat = ihuffman_jpeg(bits, codes)
         flat = [_str_to_sym(s, is_ac=True) for s in flat]
 
         # re-split flat list back into blocks using EOB
@@ -386,9 +388,8 @@ def ijpeg(ipath, opath):
             assert data[:2] == b'\xff\xc4', "Not a DHT marker"
             length = int.from_bytes(data[2:4], 'big')
             payload = json.loads(data[4:4 + length - 2].decode('utf-8'))
-            dc_codes = {int(k) if k.lstrip('-').isdigit() else eval(k): v
-                        for k, v in payload['dc'].items()}
-            ac_codes = {eval(k): v for k, v in payload['ac'].items()}
+            dc_codes = {k: v for k, v in payload['dc'].items()}
+            ac_codes = {k: v for k, v in payload['ac'].items()}
             return dc_codes, ac_codes
         
         with open(path, 'rb') as f:
@@ -492,5 +493,7 @@ def ijpeg(ipath, opath):
 
 if __name__ == "__main__":
     ipath = "AIA2\\tests\\to_compress.png"
-    opath = "AIA2\\results\\compressed.png"
-    jpeg(ipath, opath)
+    cpath = "AIA2\\results\\compressed.jpg"
+    opath = "AIA2\\results\\recontructed.png"
+    jpeg(ipath, cpath)
+    ijpeg(cpath, opath)
