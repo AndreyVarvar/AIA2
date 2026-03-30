@@ -68,7 +68,7 @@ def _str_to_sym(s: str, is_ac: bool):
         return (int(a), int(b))
     return int(s)
 
-def jpeg(image_path):
+def jpeg(ipath, opath):
     """Convert PNG image into JPEG"""
 
     def rgb_to_ycrcb(img: np.ndarray) -> np.ndarray:
@@ -241,12 +241,12 @@ def jpeg(image_path):
             # EOI marker
             f.write(b'\xff\xd9')
 
-    image = mtimg.imread(image_path)
+    image = mtimg.imread(ipath)
     orig_h, orig_w = image.shape[:2]
     # step 1: convert RGB into YCbCr
-    image = rgb_to_ycrcb(image)
+    ycbcr = rgb_to_ycrcb(image)
     # step 2: Chroma subsampling (reduce resoulution of Cb and Cr)
-    channels = subsample(image)
+    channels = subsample(ycbcr)
     # step 3: block splitting (8x8)
     blocks = [split_blocks(pad(ch)) for ch in channels]
     block_shapes = [(b.shape[0], b.shape[1]) for b in blocks]
@@ -268,8 +268,16 @@ def jpeg(image_path):
         ac_bits, ac_codes = huffman_ac(ac_symbols)
         results.append((dc_bits, dc_codes, ac_bits, ac_codes))
 
+    encoded = {
+        'results':      results,
+        'block_shapes': block_shapes,
+        'orig_h':       orig_h,
+        'orig_w':       orig_w,
+    }
+    write_jpeg(opath, encoded)
 
-def ijpeg(jpeg_path):
+
+def ijpeg(ipath, opath):
     """Convert compressend JPEG image back to PNG with losses because of nature of JPEG"""
 
     def ycbcr_to_rgb(img: np.ndarray) -> np.ndarray:
@@ -291,6 +299,10 @@ def ijpeg(jpeg_path):
         # Crop to Y's shape in case of odd dimensions
         h, w = Y.shape
         return np.stack([Y, Cb_up[:h, :w], Cr_up[:h, :w]], axis=-1)
+    
+    def merge_blocks(blocks: np.ndarray, h: int, w: int) -> np.ndarray:
+        """Reconstruct a 2D channel from (nH, nW, 8, 8) blocks."""
+        return (blocks.transpose(0, 2, 1, 3).reshape(h, w))
     
     def apply_idct(blocks: np.ndarray) -> np.ndarray:
         nH, nW = blocks.shape[:2]
@@ -433,6 +445,52 @@ def ijpeg(jpeg_path):
         }
 
 
+    data = read_jpeg(ipath)
+
+    results      = data['results']
+    block_shapes = data['block_shapes']
+    orig_h       = data['orig_h']
+    orig_w       = data['orig_w']
+
+    tables = [Q_LUMA, Q_CHROMA, Q_CHROMA]
+    channels = []
+
+    for (dc_bits, dc_codes, ac_bits, ac_codes), (nH, nW), table in zip(results, block_shapes, tables):
+
+        # step 7: Huffman + RLE decode
+        dc_deltas  = ihuffman_dc(dc_bits, dc_codes)
+        ac_symbols = ihuffman_ac(ac_bits, ac_codes, nH * nW)
+        zz = decode_channel(dc_deltas, ac_symbols, nH, nW)
+
+        # step 6: inverse zigzag
+        blocks = izigzag(zz)
+
+        # step 5: dequantization
+        blocks = dequantize(blocks, table)
+
+        # step 4: IDCT
+        blocks = apply_idct(blocks)
+
+        # step 3: merge blocks
+        channel = merge_blocks(blocks, nH * 8, nW * 8)
+
+        channels.append(channel)
+
+    # step 3: crop padding
+    Y  = channels[0][:orig_h, :orig_w]
+    Cb = channels[1][:orig_h // 2, :orig_w // 2]
+    Cr = channels[2][:orig_h // 2, :orig_w // 2]
+
+    # step 2: upsample chroma
+    ycbcr = upsample(Y, Cb, Cr)
+
+    # step 1: convert YCbCr back to RGB
+    image =  ycbcr_to_rgb(ycbcr)
+
+    mtimg.imsave(opath, image)
+
+
 if __name__ == "__main__":
-    image_path = "AIA2\\tests\\to_compress.png"
-    jpeg(image_path)
+    ipath = "AIA2\\tests\\to_compress.png"
+    opath = "AIA2\\results\\compressed.png"
+    jpeg(ipath, opath)
