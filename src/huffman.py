@@ -63,3 +63,15 @@ def ihuffman(encoded, codes):
             current = ""
 
     return decoded
+
+def ihuffman_jpeg(encoded: str, codes: dict) -> list:
+    """List-returning version of ihuffman for JPEG use."""
+    inverted_codes = {v: k for k, v in codes.items()}
+    decoded = []
+    current = ""
+    for bit in encoded:
+        current += bit
+        if current in inverted_codes:
+            decoded.append(inverted_codes[current])
+            current = ""
+    return decoded
