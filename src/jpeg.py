@@ -1,10 +1,8 @@
 # JPEG compression
-from dct import dct2d, idct2d
-from rle import rle, irle
-from huffman import *
+from .dct import dct2d, idct2d
+from .huffman import *
 import numpy as np
 import json
-import pickle
 import matplotlib.image as mtimg
 import struct
 

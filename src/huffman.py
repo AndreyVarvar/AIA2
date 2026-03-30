@@ -48,6 +48,7 @@ def huffman(symbols):
     tree = _build_huffman_tree(symbols)
     codes = _generate_huffman_codes(tree)
     encoded = ''.join(codes[s] for s in symbols)
+
     return encoded, codes
 
 def ihuffman(encoded, codes):
@@ -75,3 +76,4 @@ def ihuffman_jpeg(encoded: str, codes: dict) -> list:
             decoded.append(inverted_codes[current])
             current = ""
     return decoded
+
