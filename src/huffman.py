@@ -39,7 +39,7 @@ def _generate_huffman_codes(node, code="", table=None):
         table = {}
     if node:
         if node.symbol is not None:
-            table[node.symbol] = code
+            table[node.symbol] = code if code else "0"
         _generate_huffman_codes(node.left, code + "0", table)
         _generate_huffman_codes(node.right, code + "1", table)
     return table
