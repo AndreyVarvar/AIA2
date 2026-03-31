@@ -59,8 +59,11 @@ def test(file_name, compression_type):
     # get comression ratio
     test_path = f"{TEST_DIR}{file_name}.{decomp_ext}"
     result_path = f"{RESULT_DIR}{file_name}-{compression_type}.{comp_ext}"
-    match_compression(compression_type, test_path, result_path)
-
+    try:
+        match_compression(compression_type, test_path, result_path)
+    except:
+        print(f"\nError compressing file {file_name}")
+        return -1
     stats["ratio"] = os.path.getsize(test_path) / os.path.getsize(result_path)  # > 1 - good, < 1 - what are you even doing bro?
     stats["file size"] = os.path.getsize(test_path)
 
@@ -81,21 +84,29 @@ def test(file_name, compression_type):
         stats["time"] =  sum(times) / len(times)
 
 
-    compression_stats[compression_type].update(
-        {file_name+f".{decomp_ext}": stats}
-    )
-
     # test for loss of data
     # since RLE is supposed to be lossless, we check if no data is loss
     
     compare_path = f"{COMPARE_DIR}{file_name}-{compression_type}.{decomp_ext}"
-    match_decompression(compression_type, result_path, compare_path)
-    
+    try:
+        match_decompression(compression_type, result_path, compare_path)
+    except:
+        print(f"\nError decompressing file after compressing this one: {file_name}")
+        return -1
+
     stats["lossless"] = filecmp.cmp(test_path, compare_path)
+
+
+    compression_stats[compression_type].update(
+        {file_name+f".{decomp_ext}": stats}
+    )
+
+    return 0
+
 
 def run_tests(test_type, file_name=None):
     all_files = os.listdir("./tests/")  # get all test files
-    
+
     files = []
     for file in all_files:
         if test_type == "all":
@@ -108,30 +119,44 @@ def run_tests(test_type, file_name=None):
             files.append(file)
 
     file_count = len(files)
-
+    failed_tests = []
+    compression_types = ["jpeg", "rle", "huffman"]
+    
     start = time.perf_counter()
 
     for i, file in enumerate(files):
         print(f"\r\033[K{i}/{file_count} done, current file: {file}", end="")
         extension = file.split(".")[-1]
         file_name = '.'.join(file.split(".")[:-1])  # remove extension from file name   
+        
         # determine compression algorithm type
-        if extension == "png":  # jpeg compression
-            test(file_name, "jpeg")
-        elif extension == "txt":  # huffman and rle compressions
-            test(file_name, "rle")
-            test(file_name, "huffman")
+        for comp in compression_types:
+            if (comp == "jpeg" and extension == "png") or (comp != "jpeg" and extension == "txt"):
+                r = test(file_name, comp)
+                if r == -1:
+                    failed_tests.append(file_name)
 
     end = time.perf_counter()
     elapsed = end - start
 
-
     print()
-    print(f"Ran all tests in {int(elapsed)} seconds.")
+    print(f"Ran all tests in {elapsed:.4f} seconds.")
     with open("benchark.txt", "w") as file:
         json.dump(compression_stats, file)
 
     print(f"Successfuly dumped benchmark to benchmark.txt (wow, so creative)")
+    
+    if len(failed_tests) > 0:
+        print(f"{len(failed_tests)} failed tests. These include: {failed_tests}")
+
+    # after running all the tests, cleanup the results and compare folders
+    results_files = os.listdir(RESULT_DIR)
+    for file in results_files:
+        os.remove(RESULT_DIR + file)
+
+    compare_files = os.listdir(COMPARE_DIR)
+    for file in compare_files:
+        os.remove(COMPARE_DIR + file)
 
 
 
