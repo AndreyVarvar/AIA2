@@ -6,7 +6,7 @@ import os
 import time
 import filecmp
 import pprint
-
+import json
 
 # we need to take track of time and compression ratio
 # The lists will have tuples of the following format: (time it took)
@@ -41,10 +41,6 @@ def match_decompression(compression_type: str, ipath, opath):
     elif compression_type == "huffman":
         ihuffman_file(ipath, opath)
 
-with open("./tests/1.txt", "r") as file:
-    print(set(file.read()), end="")
-
-
 def test(file_name, compression_type):
     stats = {
         "ratio": 0.0,
@@ -60,7 +56,7 @@ def test(file_name, compression_type):
     else:
         comp_ext, decomp_ext = "txt", "txt"
 
-    # get compression ratio
+    # get comression ratio
     test_path = f"{TEST_DIR}{file_name}.{decomp_ext}"
     result_path = f"{RESULT_DIR}{file_name}-{compression_type}.{comp_ext}"
     match_compression(compression_type, test_path, result_path)
@@ -98,8 +94,10 @@ def test(file_name, compression_type):
     stats["lossless"] = filecmp.cmp(test_path, compare_path)
 
 files = os.listdir("./tests/")  # get all test files
+file_count = len(files)
 
-for file in files:
+for i, file in enumerate(files):
+    print(f"\033[K{i}/{file_count} done, current file: {file}\r", end="")
     extension = file.split(".")[-1]
     file_name = '.'.join(file.split(".")[:-1])  # remove extension from file name   
     # determine compression algorithm type
@@ -109,5 +107,7 @@ for file in files:
         test(file_name, "rle")
         test(file_name, "huffman")
 
+with open("benchark.txt", "w") as file:
+    json.dump(compression_stats, file)
 pprint.pprint(compression_stats, indent=4)
 
