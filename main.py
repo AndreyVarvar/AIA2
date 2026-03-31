@@ -93,21 +93,64 @@ def test(file_name, compression_type):
     
     stats["lossless"] = filecmp.cmp(test_path, compare_path)
 
-files = os.listdir("./tests/")  # get all test files
-file_count = len(files)
+def run_tests(test_type, file_name=None):
+    all_files = os.listdir("./tests/")  # get all test files
+    
+    files = []
+    for file in all_files:
+        if test_type == "all":
+            files.append(file)
+        elif test_type == "txt" and file.split(".")[-1] == "txt":
+            files.append(file)
+        elif test_type == "jpeg" and file.split(".")[-1] == "png":
+            files.append(file)
+        elif test_type == "specific" and file == file_name:
+            files.append(file)
 
-for i, file in enumerate(files):
-    print(f"\033[K{i}/{file_count} done, current file: {file}\r", end="")
-    extension = file.split(".")[-1]
-    file_name = '.'.join(file.split(".")[:-1])  # remove extension from file name   
-    # determine compression algorithm type
-    if extension == "png":  # jpeg compression
-        test(file_name, "jpeg")
-    elif extension == "txt":  # huffman and rle compressions
-        test(file_name, "rle")
-        test(file_name, "huffman")
+    file_count = len(files)
 
-with open("benchark.txt", "w") as file:
-    json.dump(compression_stats, file)
-pprint.pprint(compression_stats, indent=4)
+    start = time.perf_counter()
+
+    for i, file in enumerate(files):
+        print(f"\r\033[K{i}/{file_count} done, current file: {file}", end="")
+        extension = file.split(".")[-1]
+        file_name = '.'.join(file.split(".")[:-1])  # remove extension from file name   
+        # determine compression algorithm type
+        if extension == "png":  # jpeg compression
+            test(file_name, "jpeg")
+        elif extension == "txt":  # huffman and rle compressions
+            test(file_name, "rle")
+            test(file_name, "huffman")
+
+    end = time.perf_counter()
+    elapsed = end - start
+
+
+    print()
+    print(f"Ran all tests in {int(elapsed)} seconds.")
+    with open("benchark.txt", "w") as file:
+        json.dump(compression_stats, file)
+
+    print(f"Successfuly dumped benchmark to benchmark.txt (wow, so creative)")
+
+
+
+if __name__ == "__main__":
+    print("Choose what you want to do: ")
+    print(" 1. Run all tests")
+    print(" 2. Run specific test")
+    print(" 3. Run specific type of test (txt or jpeg)")
+    choice = int(input("answer: "))
+
+    if choice == 1:
+        run_tests("all")
+    elif choice == 2:
+        file_name = input("Enter file name of the test: ")
+        run_tests("specific", file_name)
+    elif choice == 3:
+        file_type = input("Enter file type (txt or jpeg): ")
+        if file_type not in ["txt", "jpeg"]:
+            print(f"Invalid type: {file_type}")
+        else:
+            run_tests(file_type)
 
