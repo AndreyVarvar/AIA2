@@ -41,6 +41,9 @@ def match_decompression(compression_type: str, ipath, opath):
     elif compression_type == "huffman":
         ihuffman_file(ipath, opath)
 
+with open("./tests/1.txt", "r") as file:
+    print(set(file.read()), end="")
+
 
 def test(file_name, compression_type):
     stats = {
