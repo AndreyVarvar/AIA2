@@ -122,6 +122,9 @@ def run_tests(test_type, file_name=None):
     failed_tests = []
     compression_types = ["jpeg", "rle", "huffman"]
     
+    if file_count < 20:
+        print("You can run `python generate.py` to generate .txt tests")
+
     start = time.perf_counter()
 
     for i, file in enumerate(files):
