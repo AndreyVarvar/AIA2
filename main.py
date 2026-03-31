@@ -46,7 +46,8 @@ def test(file_name, compression_type):
     stats = {
         "ratio": 0.0,
         "time": 0.0,
-        "lossless": False
+        "lossless": False,
+        "file size": 0.0
     }
 
     if compression_type == "jpeg":
@@ -62,6 +63,7 @@ def test(file_name, compression_type):
     match_compression(compression_type, test_path, result_path)
 
     stats["ratio"] = os.path.getsize(test_path) / os.path.getsize(result_path)  # > 1 - good, < 1 - what are you even doing bro?
+    stats["file size"] = os.path.getsize(test_path)
 
     times = []
 
