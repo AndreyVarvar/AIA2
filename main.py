@@ -218,9 +218,9 @@ if __name__ == "__main__":
     print(" 2. Run benchmark")
 
     choice = int(input("answer: "))
-    if choice == "1":
+    if choice == 1:
         compressing()
-    elif choice == "2":
+    elif choice == 2:
         testing()
     else:
         print("Invalid choice.")
