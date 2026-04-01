@@ -148,7 +148,8 @@ def run_tests(test_type, file_name=None):
         json.dump(compression_stats, file)
 
     print(f"Successfuly dumped benchmark to benchmark.txt (wow, so creative)")
-    
+    print("You can run `python graph.py` to visualize the test results")
+
     if len(failed_tests) > 0:
         print(f"{len(failed_tests)} failed tests. These include: {failed_tests}")
 
