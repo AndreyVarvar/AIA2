@@ -162,8 +162,7 @@ def run_tests(test_type, file_name=None):
         os.remove(COMPARE_DIR + file)
 
 
-
-if __name__ == "__main__":
+def testing():
     print("Choose what you want to do: ")
     print(" 1. Run all tests")
     print(" 2. Run specific test")
@@ -182,3 +181,46 @@ if __name__ == "__main__":
         else:
             run_tests(file_type)
 
+def compressing():
+    print("Enter compression algorithm you want to use:")
+    print(" 1. JPEG")
+    print(" 2. RLE")
+    print(" 3. Huffman")
+    compression_algo = int(input("answer: "))
+    
+    if compression_algo not in [1, 2, 3]:
+        print("Invalid choice")
+        return
+
+    algo = ["jpeg", "rle", "huffman"][compression_algo-1]
+
+    print("Enter what you want to do with it: ")
+    print(" 1. Compress")
+    print(" 2. Decompress")
+    choice = int(input("answer: "))
+
+    if choice not in [1, 2]:
+        print("Invalid choice")
+        return
+
+    ipath = input("Enter input file path: ")
+    opath = input("Enter output file path: ")
+
+    if choice == 1:
+        match_compression(algo, ipath, opath)
+    else:
+        match_decompression(algo, ipath, opath)
+
+
+if __name__ == "__main__":
+    print("Enter what you want to do: ")
+    print(" 1. Compress something")
+    print(" 2. Run benchmark")
+
+    choice = int(input("answer: "))
+    if choice == "1":
+        compressing()
+    elif choice == "2":
+        testing()
+    else:
+        print("Invalid choice.")

@@ -14,7 +14,7 @@ def plot(data, compression_algo, x_axis, y_axis, file_type, color="blue"):
     compression_algo: 'jpeg', 'rle', or 'huffman'
     x_axis: 'ratio', 'time', 'efficiency', and 'file size'
     y_axis: same as x_axis
-    file_type: 'random' or 'words'. Does not do anything if compression_algo == 'jpeg'
+    file_type: 'random', 'words', or 'repeating'. Does not do anything if compression_algo == 'jpeg'
     """
     if compression_algo not in ["jpeg", "rle", "huffman"]:
         print("Invalid compression algorithm:", compression_algo)
@@ -25,7 +25,7 @@ def plot(data, compression_algo, x_axis, y_axis, file_type, color="blue"):
             print("Invalid axis type:", axis)
             return
 
-    if file_type not in ['random', 'words'] and compression_algo != 'jpeg':
+    if file_type not in ['random', 'words', 'repeating'] and compression_algo != 'jpeg':
         print("Invalid file type:", file_type)
         return
 
@@ -37,6 +37,8 @@ def plot(data, compression_algo, x_axis, y_axis, file_type, color="blue"):
             if file_type == 'random' and 'random' not in file:
                 continue
             if file_type == 'words' and ('words' not in file and 'bee' not in file):
+                continue
+            if file_type == 'repeating' and file_type not in file:
                 continue
  
         for i in range(2):
@@ -85,16 +87,28 @@ plots_to_plot = [
     ['rle', 'file size', 'time', 'random'],
     ['rle', 'file size', 'ratio', 'random'],
     ['rle', 'file size', 'efficiency', 'random'],
+
     ['rle', 'file size', 'time', 'words'],
     ['rle', 'file size', 'ratio', 'words'],
     ['rle', 'file size', 'efficiency', 'words'],
+    
+    ['rle', 'file size', 'time', 'repeating'],
+    ['rle', 'file size', 'ratio', 'repeating'],
+    ['rle', 'file size', 'efficiency', 'repeating'],
+    
 
     ['huffman', 'file size', 'time', 'random'],
     ['huffman', 'file size', 'ratio', 'random'],
     ['huffman', 'file size', 'efficiency', 'random'],
+    
     ['huffman', 'file size', 'time', 'words'],
     ['huffman', 'file size', 'ratio', 'words'],
     ['huffman', 'file size', 'efficiency', 'words'],
+
+    ['huffman', 'file size', 'time', 'repeating'],
+    ['huffman', 'file size', 'ratio', 'repeating'],
+    ['huffman', 'file size', 'efficiency', 'repeating'],
+
 
     ['jpeg', 'file size', 'time', ''],
     ['jpeg', 'file size', 'ratio', ''],
