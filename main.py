@@ -64,6 +64,7 @@ def test(file_name, compression_type):
     except:
         print(f"\nError compressing file {file_name}")
         return -1
+
     stats["ratio"] = os.path.getsize(test_path) / os.path.getsize(result_path)  # > 1 - good, < 1 - what are you even doing bro?
     stats["file size"] = os.path.getsize(test_path)
 
@@ -85,7 +86,6 @@ def test(file_name, compression_type):
 
 
     # test for loss of data
-    # since RLE is supposed to be lossless, we check if no data is loss
     
     compare_path = f"{COMPARE_DIR}{file_name}-{compression_type}.{decomp_ext}"
     try:
@@ -144,7 +144,7 @@ def run_tests(test_type, file_name=None):
 
     print()
     print(f"Ran all tests in {elapsed:.4f} seconds.")
-    with open("benchark.txt", "w") as file:
+    with open("benchmark.txt", "w") as file:
         json.dump(compression_stats, file)
 
     print(f"Successfuly dumped benchmark to benchmark.txt (wow, so creative)")
