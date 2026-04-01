@@ -1,6 +1,9 @@
 import random
 import os
+import sys
 
+# use this to generate deterministic tests. Useful for when you want to copy what someone else has
+# random.seed()
 
 def filter(words):
     filtered = []
@@ -13,7 +16,7 @@ def filter(words):
     return filtered
 
 
-alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-=+_/?><,.~!@#$%^&*()[]{}"
+alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 with open("./top_english_words_mixed_1000000.txt", "r") as file:
     words = file.readlines()
@@ -24,17 +27,8 @@ def generate_tests_random_txt(count: int, size_type: str):
     # generate tests for RLE and huffman
     test_path = "./tests/"
 
-    size = 0
-    if size_type == "small":
-        size = random.randrange(5, 50)
-    if size_type == "medium":
-        size = random.randrange(50, 500)
-    if size_type == "large":
-        size = random.randrange(500, 5_000)
-    if size_type == "HUMONGOUS":
-        size = random.randrange(5_000, 50_000)
 
-    if size == 0:
+    if size_type not in ['small', 'medium', 'large', 'HUMONGOUS']:
         print(f"Invalid size: {size_type}")
         return
     if count < 0 or count > 100:
@@ -43,6 +37,16 @@ def generate_tests_random_txt(count: int, size_type: str):
         return
 
     for i in range(count):
+        size = 0
+        if size_type == "small":
+            size = random.randrange(5, 50)
+        if size_type == "medium":
+            size = random.randrange(50, 500)
+        if size_type == "large":
+            size = random.randrange(500, 5_000)
+        if size_type == "HUMONGOUS":
+            size = random.randrange(5_000, 50_000)
+
         path = test_path + f"random-{size_type}-{i}.txt"
 
         with open(path, "w") as file:
@@ -57,17 +61,9 @@ def generate_tests_words_txt(count: int, size_type: str):
     # generate tests for RLE and huffman
     test_path = "./tests/"
 
-    word_count = 0
-    if size_type == "small":
-        word_count = random.randrange(1, 10)
-    if size_type == "medium":
-        word_count = random.randrange(10, 100)
-    if size_type == "large":
-        word_count = random.randrange(100, 1_000)
-    if size_type == "HUMONGOUS":
-        word_count = random.randrange(1_000, 10_000)
 
-    if word_count == 0:
+
+    if size_type not in ['small', 'medium', 'large', 'HUMONGOUS']:
         print(f"Invalid size: {size_type}")
         return
     if count < 0 or count > 100:
@@ -77,6 +73,16 @@ def generate_tests_words_txt(count: int, size_type: str):
 
 
     for i in range(count):
+        word_count = 0
+        if size_type == "small":
+            word_count = random.randrange(1, 10)
+        if size_type == "medium":
+            word_count = random.randrange(10, 100)
+        if size_type == "large":
+            word_count = random.randrange(100, 1_000)
+        if size_type == "HUMONGOUS":
+            word_count = random.randrange(1_000, 10_000)
+        
         path = test_path + f"words-{size_type}-{i}.txt"
 
         with open(path, "w") as file:
@@ -84,6 +90,44 @@ def generate_tests_words_txt(count: int, size_type: str):
                 file.write(random.choice(words))
     
     print(f"Successfully generated {count} word tests of size type: {size_type}")
+
+
+
+def generate_tests_repeating_random_txt(count: int, size_type: str): 
+    # generate tests for RLE and huffman
+    test_path = "./tests/"
+
+
+    if size_type not in ['small', 'medium', 'large', 'HUMONGOUS']:
+        print(f"Invalid size: {size_type}")
+        return
+    if count < 0 or count > 100:
+        print("Invalid count:", count)
+        print("Count should be greater than 0 and smaller than 100 (to not bomb your computer)")
+        return
+
+    for i in range(count):
+        size = 0
+        if size_type == "small":
+            size = random.randrange(5, 50)
+        if size_type == "medium":
+            size = random.randrange(50, 500)
+        if size_type == "large":
+            size = random.randrange(500, 5_000)
+        if size_type == "HUMONGOUS":
+            size = random.randrange(5_000, 50_000)
+
+        path = test_path + f"repeating-{size_type}-{i}.txt"
+
+        with open(path, "w") as file:
+            prev_choice = alphabet[0]
+            for i in range(size):
+                choice = random.choice(alphabet) if random.random() < 0.3 else prev_choice  # 70% chance to repeat the symbol.
+                file.write(choice)
+                prev_choice = choice
+
+    print(f"Successfully generated {count} repeating random tests of size type: {size_type}")
+
 
 
 def clean_testing_dir(type_to_remove):
@@ -97,6 +141,14 @@ def clean_testing_dir(type_to_remove):
     print(f"Successfully deleted {deleted_files_count} files.")
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        seed = sys.argv[1]
+    else:
+        seed = random.randrange(sys.maxsize)
+    random.seed(seed)
+
+    print("Randomizer seed:", seed)
+
     print("What do you want to do: ")
     print(" 1. Generate txt tests (random gibberish);")
     print(" 2. Generate txt tests (enlgish words);")
@@ -109,7 +161,12 @@ if __name__ == "__main__":
     print("     f. 80 medium words;")
     print("     g. 40 large words;")
     print("     h. 20 HUMONGOUS words;")
+    print("     i. 100 small repeating random;")
+    print("     j. 80 medium repeating random;")
+    print("     k. 40 large repeating random;")
+    print("     l. 20 HUMONGOUS repeating random;")
     print(" 4. Clear current test directory.")
+    print(" 5. Do nothing.")
 
     i = int(input("answer: "))
     if i == 1:
@@ -129,9 +186,15 @@ if __name__ == "__main__":
         generate_tests_words_txt(80, "medium")
         generate_tests_words_txt(40, "large")
         generate_tests_words_txt(20, "HUMONGOUS")
+        generate_tests_repeating_random_txt(100, "small")
+        generate_tests_repeating_random_txt(80, "medium")
+        generate_tests_repeating_random_txt(40, "large")
+        generate_tests_repeating_random_txt(20, "HUMONGOUS")
     elif i == 4:
         type_to_remove = input("Enter file type to remove (png or txt): ")
         clean_testing_dir(type_to_remove)
+    elif i == 5:
+        print("bruh")
     else:
         print("Invalid option.")
 

@@ -1,6 +1,0 @@
-UFCS
-GABBRO
-Papuans
-Parser
-Meryem
-Portici
