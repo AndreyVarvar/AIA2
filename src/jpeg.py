@@ -332,12 +332,12 @@ def ijpeg(ipath, opath):
             block[0] = dc
             i = 1
             for skip, val in symbols:
-                if (skip, val) == EOB:
-                    break
+                if (skip, val) == EOB: break
                 if (skip, val) == ZRL:
                     i += 16
                 else:
                     i += skip
+                    if i >= 64: break
                     block[i] = val
                     i += 1
             return block
@@ -357,13 +357,26 @@ def ijpeg(ipath, opath):
         # re-split flat list back into blocks using EOB
         blocks = []
         block = []
+        pos = 0
         for sym in flat:
-            block.append(sym)
-            if sym == EOB or len(block) == 63:
+            skip, val = sym
+            if sym == EOB:
                 blocks.append(block)
                 block = []
-                if len(blocks) == n_blocks:
-                    break
+                pos = 0
+            elif sym == ZRL:
+                block.append(sym)
+                pos += 16
+            else:
+                block.append(sym)
+                pos += skip + 1
+                if pos >= 63:
+                    blocks.append(block)
+                    block = []
+                    pos = 0
+            if len(blocks) == n_blocks: break
+        if block and len(blocks) < n_blocks:
+            blocks.append(block)
         return blocks
     
     def read_jpeg(path: str) -> dict:
