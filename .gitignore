@@ -208,3 +208,7 @@ __marimo__/
 
 .DS_Store
 tests/*.txt
+
+*.docx
+*.doc
+*.odt
