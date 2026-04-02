@@ -1,6 +1,7 @@
 import random
 import os
 import sys
+import pygame
 
 # use this to generate deterministic tests. Useful for when you want to copy what someone else has
 # random.seed()
@@ -92,6 +93,43 @@ def generate_tests_words_txt(count: int, size_type: str):
     print(f"Successfully generated {count} word tests of size type: {size_type}")
 
 
+def generate_tests_random_png(count: int, size_type: str):
+    # generate tests for RLE and huffman
+    test_path = "./tests/"
+
+
+    if size_type not in ['small', 'medium', 'large', 'HUMONGOUS']:
+        print(f"Invalid size: {size_type}")
+        return
+    if count < 0 or count > 100:
+        print("Invalid count:", count)
+        print("Count should be greater than 0 and smaller than 100 (to not bomb your computer)")
+        return
+
+    for i in range(count):
+        w, h = 0, 0
+        if size_type == "small":
+            w, h = 50, 50
+        if size_type == "medium":
+            w, h = 100, 100
+        if size_type == "large":
+            w, h = 500, 500
+        if size_type == "HUMONGOUS":
+            w, h = 1_000, 1_000
+
+        path = test_path + f"image-{size_type}-{i}.png"
+
+        image = pygame.Surface((w, h))
+
+        for x in range(w):
+            for y in range(h):
+                image.set_at((x, y), (random.randrange(0, 256), random.randrange(0, 256), random.randrange(0, 256)))
+
+        pygame.image.save(image, path)
+
+    print(f"Successfully generated {count} random PNG tests of size type: {size_type}")
+    
+
 
 def generate_tests_repeating_random_txt(count: int, size_type: str): 
     # generate tests for RLE and huffman
@@ -165,6 +203,7 @@ if __name__ == "__main__":
     print("     j. 80 medium repeating random;")
     print("     k. 40 large repeating random;")
     print("     l. 20 HUMONGOUS repeating random;")
+    print("     m. 50 random PNG images")
     print(" 4. Clear current test directory.")
     print(" 5. Do nothing.")
 
@@ -190,6 +229,10 @@ if __name__ == "__main__":
         generate_tests_repeating_random_txt(80, "medium")
         generate_tests_repeating_random_txt(40, "large")
         generate_tests_repeating_random_txt(20, "HUMONGOUS")
+        generate_tests_random_png(25, "small")
+        generate_tests_random_png(12, "medium")
+        generate_tests_random_png(10, "large")
+        generate_tests_random_png(3, "HUMONGOUS")
     elif i == 4:
         type_to_remove = input("Enter file type to remove (png or txt): ")
         clean_testing_dir(type_to_remove)
