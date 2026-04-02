@@ -208,6 +208,8 @@ __marimo__/
 
 .DS_Store
 tests/*.txt
+tests/*.png
+tests/*.jpg
 
 *.docx
 *.doc
